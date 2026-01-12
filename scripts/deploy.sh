@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# 1.1.0
+
 # --- 1. ENVIRONMENT SETUP (Fix Composer & Git issues) ---
 # SSM runs without $HOME, so we set it manually so Composer has a place to store cache
 export HOME="/root"
