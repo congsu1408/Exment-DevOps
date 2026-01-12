@@ -29,11 +29,9 @@ sudo -u ec2-user php artisan view:cache
 # --- 3. RUN SYSTEM COMMANDS (as root) ---
 
 echo "Setting Final Permissions..."
-chown -R :apache $PROJECT_DIR/storage
-chown -R :apache $PROJECT_DIR/bootstrap/cache
 
-chmod -R 775 $PROJECT_DIR/storage
-chmod -R 775 $PROJECT_DIR/bootstrap/cache
+chmod -R 777 $PROJECT_DIR/storage
+chmod -R 777 $PROJECT_DIR/bootstrap/cache
 
 echo "Reloading Nginx..."
 systemctl reload nginx
