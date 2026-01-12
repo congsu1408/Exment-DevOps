@@ -1,5 +1,5 @@
 #!/bin/bash
-# 1.1.4
+# 1.1.5
 PROJECT_DIR="/var/www/deploy-auto"
 echo "Start Deploying..."
 
@@ -29,6 +29,9 @@ sudo -u ec2-user php artisan view:cache
 # --- 3. RUN SYSTEM COMMANDS (as root) ---
 
 echo "Setting Final Permissions..."
+chown -R :apache $PROJECT_DIR/storage
+chown -R :apache $PROJECT_DIR/bootstrap/cache
+
 chmod -R 775 $PROJECT_DIR/storage
 chmod -R 775 $PROJECT_DIR/bootstrap/cache
 
