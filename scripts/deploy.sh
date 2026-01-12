@@ -1,53 +1,42 @@
 #!/bin/bash
 
-# 1.1.0
-
-# --- 1. ENVIRONMENT SETUP (Fix Composer & Git issues) ---
-# SSM runs without $HOME, so we set it manually so Composer has a place to store cache
-export HOME="/root"
-# Allow Composer to run as root without prompting
-export COMPOSER_ALLOW_SUPERUSER=1
-
 PROJECT_DIR="/var/www/deploy-auto"
-
 echo "Start Deploying..."
 
-# --- 2. FIX GIT OWNERSHIP ISSUE ---
-# Mark this directory as trusted (run this each deploy to be safe)
+# 1. Root chuẩn bị quyền cho thư mục trước
+# Để đảm bảo ec2-user có thể ghi vào đây
+chown -R ec2-user:ec2-user $PROJECT_DIR
+
+# Fix lỗi git dubious cho cả root và ec2-user
 git config --global --add safe.directory $PROJECT_DIR
 
 cd $PROJECT_DIR
 
-# --- 3. UPDATE CODE ---
-echo "Pulling Code..."
-git fetch --all
-git reset --hard origin/main
+# --- 2. CHẠY CÁC LỆNH LIÊN QUAN ĐẾN CODE (Dùng quyền ec2-user) ---
+# Dùng sudo -u ec2-user để mượn chìa khóa SSH của ec2-user
 
-# --- 4. RUN COMPOSER ---
-echo "Running Composer..."
-# Install dependencies (HOME=/root is set, so this should no longer error)
-/usr/bin/composer install --no-dev --optimize-autoloader --no-interaction
+echo "Pulling Code (as ec2-user)..."
+sudo -u ec2-user git fetch --all
+sudo -u ec2-user git reset --hard origin/main
 
-# --- 5. LARAVEL COMMANDS ---
-echo "Running Migrations..."
-php artisan migrate --force
+echo "Running Composer (as ec2-user)..."
+# Chạy composer bằng ec2-user luôn để tránh lỗi warning "Do not run as root"
+sudo -u ec2-user /usr/bin/composer install --no-dev --optimize-autoloader --no-interaction
 
-echo "Clearing Cache..."
-php artisan optimize:clear
-php artisan config:cache
-php artisan route:cache
-php artisan view:cache
+echo "Running Artisan Commands (as ec2-user)..."
+sudo -u ec2-user php artisan migrate --force
+sudo -u ec2-user php artisan optimize:clear
+sudo -u ec2-user php artisan config:cache
+sudo -u ec2-user php artisan route:cache
+sudo -u ec2-user php artisan view:cache
 
-# --- 6. PERMISSIONS (Very important after running as root) ---
-echo "Setting Permissions..."
-# Restore file ownership to ec2-user (since we have been running as root)
-chown -R ec2-user:ec2-user $PROJECT_DIR
+# --- 3. CHẠY CÁC LỆNH HỆ THỐNG (Dùng quyền root mặc định) ---
 
-# Grant write permissions for storage
+echo "Setting Final Permissions..."
+# Đảm bảo storage ghi được
 chmod -R 775 $PROJECT_DIR/storage
 chmod -R 775 $PROJECT_DIR/bootstrap/cache
 
-# --- 7. RELOAD NGINX ---
 echo "Reloading Nginx..."
 systemctl reload nginx
 
