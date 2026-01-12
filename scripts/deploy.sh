@@ -3,14 +3,14 @@
 PROJECT_DIR="/var/www/deploy-auto"
 echo "Start Deploying..."
 
-# 1. Root chuẩn bị quyền cho thư mục
-# Trả lại nhà cho khổ chủ ec2-user
+# 1. Prepare directory permissions as root
+# Hand the directory back to ec2-user
 chown -R ec2-user:ec2-user $PROJECT_DIR
 
 cd $PROJECT_DIR
 
-# --- 2. CHẠY CODE (Dùng quyền ec2-user) ---
-# Vì đã chown ở trên, nên ec2-user chạy git thoải mái không cần safe.directory nữa
+# --- 2. RUN CODE (as ec2-user) ---
+# Since we chowned above, ec2-user can run Git without safe.directory
 
 echo "Pulling Code (as ec2-user)..."
 sudo -u ec2-user git fetch --all
@@ -26,7 +26,7 @@ sudo -u ec2-user php artisan config:cache
 sudo -u ec2-user php artisan route:cache
 sudo -u ec2-user php artisan view:cache
 
-# --- 3. CHẠY HỆ THỐNG (Dùng quyền root) ---
+# --- 3. RUN SYSTEM COMMANDS (as root) ---
 
 echo "Setting Final Permissions..."
 chmod -R 775 $PROJECT_DIR/storage
