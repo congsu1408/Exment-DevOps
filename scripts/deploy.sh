@@ -7,6 +7,7 @@ PROJECT_DIR="/var/www/deploy-auto"
 # --- START ---
 echo "Start Deploying..."
 cd $PROJECT_DIR
+git config --global --add safe.directory $PROJECT_DIR
 
 # 1. Pull the latest code from GitHub
 # (git reset --hard forces the working tree to match GitHub exactly, discarding any local changes)
