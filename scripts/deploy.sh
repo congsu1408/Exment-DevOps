@@ -1,5 +1,5 @@
 #!/bin/bash
-
+# 1.1.4
 PROJECT_DIR="/var/www/deploy-auto"
 echo "Start Deploying..."
 
