@@ -1,8 +1,5 @@
 name: CI/CD Pipeline
 
-# Kích hoạt khi:
-# 1. Push code vào nhánh 'dev' (để deploy test)
-# 2. Tạo Tag bắt đầu bằng 'prod-' (để deploy prod)
 on:
   push:
     branches:
