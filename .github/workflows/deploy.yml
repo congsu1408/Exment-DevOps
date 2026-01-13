@@ -28,4 +28,4 @@ jobs:
             --document-name "AWS-RunShellScript" \
             --targets "Key=instanceids,Values=i-0e804a78c5cfeffad" \
             --comment "Auto Deploy via GitHub Actions" \
-            --parameters commands="['bash /var/www/deploy-auto/scripts/deploy.sh']"
+            --parameters 'commands=["bash /var/www/deploy-auto/scripts/deploy.sh prod"]'"
