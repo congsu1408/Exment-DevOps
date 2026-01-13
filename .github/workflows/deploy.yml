@@ -12,41 +12,41 @@ permissions:
   contents: read
 
 jobs:
-  # --- JOB 1: DEPLOY CHO TEST (Tự động 100%) ---
+  # --- JOB 1: DEPLOY TO TEST (100% automated) ---
   deploy-test:
     if: github.ref == 'refs/heads/dev'
     runs-on: ubuntu-latest
-    environment: Development  # Dùng biến môi trường Development
+    environment: Development  # Use the Development environment variables
     
     steps:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          # Thay Role ARN của bạn vào đây
+          # Replace with your Role ARN
           role-to-assume: arn:aws:iam::113624067602:role/GitHub-Deploy-Role
           aws-region: ap-northeast-1
 
       - name: Deploy to TEST Server
         run: |
           echo "🚀 Deploying to TEST Environment..."
-          # Gọi script nằm trong thư mục TEST, truyền tham số 'test'
+          # Call the script in the TEST directory, passing the 'test' parameter
           aws ssm send-command \
             --instance-ids ${{ vars.INSTANCE_ID }} \
             --document-name "AWS-RunShellScript" \
             --parameters 'commands=["bash /var/www/test/deploy-auto/scripts/deploy.sh test"]' \
             --comment "Auto Deploy to Test"
 
-  # --- JOB 2: DEPLOY CHO PROD (Cần duyệt Manual) ---
+  # --- JOB 2: DEPLOY TO PROD (requires manual approval) ---
   deploy-prod:
     if: startsWith(github.ref, 'refs/tags/prod-')
     runs-on: ubuntu-latest
-    environment: Production   # Dùng môi trường Production (Sẽ dừng chờ Approve)
+    environment: Production   # Use the Production environment (will wait for approval)
     
     steps:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          # Thay Role ARN của bạn vào đây
+          # Replace with your Role ARN
           role-to-assume: arn:aws:iam::113624067602:role/GitHub-Deploy-Role
           aws-region: ap-northeast-1
 
