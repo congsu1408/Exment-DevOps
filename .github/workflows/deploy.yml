@@ -6,7 +6,7 @@ on:
       - "prod-*"
 
 permissions:
-  id-token: write   # Bắt buộc để dùng OIDC
+  id-token: write 
   contents: read
 
 jobs:
