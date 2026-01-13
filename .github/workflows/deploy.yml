@@ -1,60 +1,31 @@
-name: CI/CD Pipeline
+name: Deploy to EC2 (SSM)
 
 on:
   push:
-    branches:
-      - dev
     tags:
-      - "prod-*"
+      - "prod-*" 
 
 permissions:
-  id-token: write
+  id-token: write  
   contents: read
 
 jobs:
-  # --- JOB 1: DEPLOY TO TEST (100% automated) ---
-  deploy-test:
-    if: github.ref == 'refs/heads/dev'
+  deploy:
     runs-on: ubuntu-latest
-    environment: Development  # Use the Development environment variables
-    
     steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          # Replace with your Role ARN
-          role-to-assume: arn:aws:iam::113624067602:role/GitHub-Deploy-Role
-          aws-region: ap-northeast-1
+          role-to-assume: arn:aws:iam::113624067602:role/GitHub-Deploy-Role 
+          aws-region: ap-northeast-1                                  
 
-      - name: Deploy to TEST Server
+      - name: Send Deploy Command to EC2
         run: |
-          echo "🚀 Deploying to TEST Environment..."
-          # Call the script in the TEST directory, passing the 'test' parameter
           aws ssm send-command \
-            --instance-ids ${{ vars.INSTANCE_ID }} \
             --document-name "AWS-RunShellScript" \
-            --parameters 'commands=["bash /var/www/test/deploy-auto/scripts/deploy.sh test"]' \
-            --comment "Auto Deploy to Test"
-
-  # --- JOB 2: DEPLOY TO PROD (requires manual approval) ---
-  deploy-prod:
-    if: startsWith(github.ref, 'refs/tags/prod-')
-    runs-on: ubuntu-latest
-    environment: Production   # Use the Production environment (will wait for approval)
-    
-    steps:
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          # Replace with your Role ARN
-          role-to-assume: arn:aws:iam::113624067602:role/GitHub-Deploy-Role
-          aws-region: ap-northeast-1
-
-      - name: Deploy to PRODUCTION Server
-        run: |
-          echo "Deploying to PRODUCTION Environment..."
-          aws ssm send-command \
-            --instance-ids ${{ vars.INSTANCE_ID }} \
-            --document-name "AWS-RunShellScript" \
-            --parameters 'commands=["bash /var/www/deploy-auto/scripts/deploy.sh prod"]' \
-            --comment "Release to Production"
+            --targets "Key=instanceids,Values=i-0e804a78c5cfeffad" \
+            --comment "Auto Deploy via GitHub Actions" \
+            --parameters commands="['bash /var/www/deploy-auto/scripts/deploy.sh']"
