@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# 1.1.7
+
 # Read environment argument from invocation (e.g., bash deploy.sh test)
 ENV_TYPE=$1
 
