@@ -1,31 +1,28 @@
-name: Deploy to EC2 (SSM)
+name: CI/CD Pipeline
 
 on:
   push:
     tags:
-      - "prod-*" 
+      - "prod-*"
 
 permissions:
-  id-token: write  
+  id-token: write   # Bắt buộc để dùng OIDC
   contents: read
 
 jobs:
-  deploy:
+  deploy-prod:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::113624067602:role/GitHub-Deploy-Role 
-          aws-region: ap-northeast-1                                  
+          role-to-assume: arn:aws:iam::113624067602:role/GitHub-Deploy-Role
+          aws-region: ap-northeast-1
 
-      - name: Send Deploy Command to EC2
+      - name: Deploy to PROD Server
         run: |
           aws ssm send-command \
             --document-name "AWS-RunShellScript" \
-            --targets "Key=instanceids,Values=i-0e804a78c5cfeffad" \
-            --comment "Auto Deploy via GitHub Actions" \
-            --parameters commands="['bash /var/www/deploy-auto/scripts/deploy.sh']"
+            --targets "Key=instanceids,Values=${{ secrets.PROD_INSTANCE_ID }}" \
+            --parameters 'commands=["sudo /usr/local/bin/deploy-prod.sh"]' \
+            --comment "Auto Deploy Prod via OIDC"
