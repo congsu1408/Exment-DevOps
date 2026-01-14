@@ -24,5 +24,4 @@ jobs:
           aws ssm send-command \
             --document-name "Exment-Deploy-Prod-Doc" \
             --targets "Key=instanceids,Values=i-0e804a78c5cfeffad" \
-            --parameters 'commands=["sudo shutdown -r now"]' \
             --comment "Trigger Safe Deploy"
