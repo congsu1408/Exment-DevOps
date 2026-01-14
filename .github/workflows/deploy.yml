@@ -28,4 +28,5 @@ jobs:
           aws ssm send-command \
             --document-name "Exment-Deploy-Prod-Doc" \
             --targets "Key=instanceids,Values=${{ secrets.PROD_INSTANCE_ID }}" \
+            --cloud-watch-output-config '{"CloudWatchOutputEnabled":true, "CloudWatchLogGroupName":"/aws/ssm/Exment-Deploy-Logs"}' \
             --comment "Trigger Safe Deploy via GitHub Actions"
