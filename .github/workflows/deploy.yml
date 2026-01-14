@@ -22,7 +22,6 @@ jobs:
       - name: Deploy to PROD Server
         run: |
           aws ssm send-command \
-            --document-name "AWS-RunShellScript" \
+            --document-name "Exment-Deploy-Prod-Doc" \
             --targets "Key=instanceids,Values=i-0e804a78c5cfeffad" \
-            --parameters 'commands=["sudo /usr/local/bin/deploy-prod.sh"]' \
-            --comment "Auto Deploy Prod via OIDC"
+            --comment "Trigger Safe Deploy"
