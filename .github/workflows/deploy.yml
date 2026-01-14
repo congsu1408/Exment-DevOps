@@ -9,6 +9,10 @@ permissions:
   id-token: write 
   contents: read
 
+concurrency: 
+  group: production-deployment
+  cancel-in-progress: false
+
 jobs:
   deploy-prod:
     runs-on: ubuntu-latest
@@ -16,12 +20,12 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::113624067602:role/GitHub-Deploy-Role
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/GitHub-Deploy-Role
           aws-region: ap-northeast-1
 
       - name: Deploy to PROD Server
         run: |
           aws ssm send-command \
             --document-name "Exment-Deploy-Prod-Doc" \
-            --targets "Key=instanceids,Values=i-0e804a78c5cfeffad" \
-            --comment "Trigger Safe Deploy"
+            --targets "Key=instanceids,Values=${{ secrets.PROD_INSTANCE_ID }}" \
+            --comment "Trigger Safe Deploy via GitHub Actions"
