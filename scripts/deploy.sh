@@ -17,7 +17,7 @@ S3_CODE_PATH="s3://$BUCKET_NAME/builds/source-$TARGET_VERSION.zip"
 S3_ENV_PATH="s3://$BUCKET_NAME/.env"
 
 # Log configuration
-LOG_FILE="/var/www/deploy-auto/storage/logs/deploy-$(date +%Y-%m-%d).log"
+LOG_FILE="/var/www/deploy-auto/storage/logs/laravel-$(date +%Y-%m-%d).log"
 exec > >(tee -a "$LOG_FILE") 2>&1
 
 echo "========================================================"
