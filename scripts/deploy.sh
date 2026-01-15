@@ -65,12 +65,36 @@ echo "Step 4: Syncing to Production..."
 if [ ! -d "$PROJECT_DIR" ]; then mkdir -p "$PROJECT_DIR"; fi
 
 # rsync: -a (archive), --delete (remove files not present in source), --exclude (skip storage)
-rsync -a --delete --exclude='storage' "$TEMP_DIR/code/" "$PROJECT_DIR/"
+rsync -a --delete --exclude='storage' --exclude='.env' --exclude='.github' "$TEMP_DIR/code/" "$PROJECT_DIR/"
 
-# Create storage if missing (first deploy)
-mkdir -p "$PROJECT_DIR/storage" "$PROJECT_DIR/bootstrap/cache"
+# =================================================================
+# [NEW] RUN HOOK (CUSTOM SCRIPT) - HIGH SECURITY
+# =================================================================
+HOOK_FILE="$PROJECT_DIR/deploy-scripts/before_deploy.sh"
 
-# 5. CÀI ĐẶT & MIGRATE
+if [ -f "$HOOK_FILE" ]; then
+    echo "[HOOK DETECTED] Found custom script. Executing safely..."
+    
+    # 1. Grant execute permission
+    chmod +x "$HOOK_FILE"
+    
+    # 2. Change file owner to apache so apache can run it
+    chown apache:apache "$HOOK_FILE"
+    
+    # 3. RUN SCRIPT AS 'apache' USER (NOT ROOT)
+    # The 'apache' user should only be able to modify web files, not system files
+    if sudo -u apache /bin/bash "$HOOK_FILE"; then
+        echo "[HOOK SUCCESS] Custom script finished."
+    else
+        echo "[HOOK ERROR] Script failed. Stopping deploy to be safe."
+        exit 1 # Stop deploy if the script fails
+    fi
+else
+    echo "[HOOK] No custom script found. Skipping."
+fi
+# =================================================================
+
+# 5. PREPARE PERMISSIONS FOR COMPOSER
 cd $PROJECT_DIR
 # Temporarily take ownership to run Composer
 chown -R ec2-user:ec2-user . 
@@ -101,4 +125,4 @@ rm -rf $TEMP_DIR
 # Reload Nginx
 systemctl reload nginx
 
-echo "[DEPLOY SUCCESS] Version $TARGET_VERSION is now live!"
+echo "[DEPLOY SUCCESS] Version $TARGET_VERSION is live!"
