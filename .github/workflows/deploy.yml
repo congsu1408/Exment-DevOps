@@ -38,7 +38,7 @@ jobs:
         run: |
           aws ssm send-command \
             --document-name "Exment-Deploy-Prod-Doc" \
-            --targets "Key=instanceids,Values=${{ secrets.PROD_INSTANCE_ID }}" \
+            --targets "Key=tag:Deploy,Values=Production" \
             --parameters "version=${{ github.ref_name }}" \
             --cloud-watch-output-config '{"CloudWatchOutputEnabled":true, "CloudWatchLogGroupName":"/aws/ssm/Exment-Deploy-Logs"}' \
             --comment "Deploying Artifact ${{ github.ref_name }}"
