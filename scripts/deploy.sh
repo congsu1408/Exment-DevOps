@@ -70,7 +70,7 @@ rsync -a --delete --exclude='storage' --exclude='.env' --exclude='.github' "$TEM
 # =================================================================
 # [NEW] RUN HOOK (CUSTOM SCRIPT) - HIGH SECURITY
 # =================================================================
-HOOK_FILE="$PROJECT_DIR/deploy-scripts/before_deploy.sh"
+HOOK_FILE="$PROJECT_DIR/scripts/before_deploy.sh"
 
 if [ -f "$HOOK_FILE" ]; then
     echo "[HOOK DETECTED] Found custom script. Executing safely..."
