@@ -5,6 +5,11 @@ BUCKET_NAME="my-exment-configs"
 PROJECT_DIR="/var/www/deploy-auto"
 TARGET_VERSION=$1 
 
+if [[ ! "$TARGET_VERSION" =~ ^[a-zA-Z0-9._-]+$ ]]; then
+    echo "Error: Invalid version format. Security check failed."
+    exit 1
+fi
+
 # Validate input argument
 if [ -z "$TARGET_VERSION" ]; then
     echo "Error: Version is required (e.g., prod-v1.0)."
