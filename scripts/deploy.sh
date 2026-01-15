@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# 1.4.0
+
 # --- CONFIG ---
 BUCKET_NAME="my-exment-configs"
 PROJECT_DIR="/var/www/deploy-auto"
