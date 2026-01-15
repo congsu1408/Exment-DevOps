@@ -1,69 +1,97 @@
 #!/bin/bash
 
-# 1.1.8
+# --- CONFIG ---
+BUCKET_NAME="my-exment-configs"
+PROJECT_DIR="/var/www/deploy-auto"
+TARGET_VERSION=$1 
 
-# Read environment argument from invocation (e.g., bash deploy.sh test)
-ENV_TYPE=$1
-
-echo "Starting Deployment Process..."
-
-# --- DYNAMIC CONFIGURATION BY ENVIRONMENT ---
-if [ "$ENV_TYPE" == "prod" ]; then
-    PROJECT_DIR="/var/www/deploy-auto"
-    BRANCH="main"
-    echo "Target Environment: PRODUCTION"
-    echo "Directory: $PROJECT_DIR"
-    echo "Branch: $BRANCH"
-
-elif [ "$ENV_TYPE" == "test" ]; then
-    PROJECT_DIR="/var/www/test/deploy-auto"
-    BRANCH="dev"
-    echo "Target Environment: TEST"
-    echo "Directory: $PROJECT_DIR"
-    echo "Branch: $BRANCH"
-
-else
-    echo "Error: Invalid environment. Usage: bash deploy.sh [prod|test]"
+# Validate input argument
+if [ -z "$TARGET_VERSION" ]; then
+    echo "Error: Version is required (e.g., prod-v1.0)."
     exit 1
 fi
 
-# 1. Prepare directory ownership as root
-# Hand ownership back to ec2-user so Git can operate smoothly
-if [ -d "$PROJECT_DIR" ]; then
-    chown -R ec2-user:ec2-user $PROJECT_DIR
+# S3 file paths
+# Code is stored under builds/, .env is stored at bucket root
+S3_CODE_PATH="s3://$BUCKET_NAME/builds/source-$TARGET_VERSION.zip"
+S3_ENV_PATH="s3://$BUCKET_NAME/.env"
+
+# Log configuration
+LOG_FILE="/var/www/deploy-auto/storage/logs/deploy-$(date +%Y-%m-%d).log"
+exec > >(tee -a "$LOG_FILE") 2>&1
+
+echo "========================================================"
+echo "[DEPLOY S3 ARTIFACT] Version: $TARGET_VERSION"
+echo "Time: $(date)"
+echo "========================================================"
+
+# Create a temp directory for extraction
+TEMP_DIR="/tmp/deploy-$TARGET_VERSION"
+rm -rf $TEMP_DIR && mkdir -p $TEMP_DIR
+
+# 1. DOWNLOAD SOURCE CODE FROM S3
+echo "Step 1: Downloading Code from S3..."
+if aws s3 cp "$S3_CODE_PATH" "$TEMP_DIR/source.zip"; then
+    echo "-> Downloaded source code."
 else
-    echo "Directory $PROJECT_DIR does not exist. Please create it manually first."
+    echo "-> ERROR: Cannot find file $S3_CODE_PATH on S3."
+    echo "-> Please check if GitHub Actions finished uploading."
     exit 1
 fi
 
+# 2. UNZIP
+echo "Step 2: Unzipping..."
+unzip -q "$TEMP_DIR/source.zip" -d "$TEMP_DIR/code"
+
+# 3. DOWNLOAD .env FROM S3
+echo "Step 3: Downloading .env..."
+if aws s3 cp "$S3_ENV_PATH" "$TEMP_DIR/code/.env"; then
+    echo "-> Downloaded .env configuration."
+else
+    echo "-> ERROR: Cannot find .env on S3."
+    exit 1
+fi
+
+# 4. SYNC CODE (RSYNC)
+# "Magic" step: only updates changed files, keeps storage intact
+echo "Step 4: Syncing to Production..."
+if [ ! -d "$PROJECT_DIR" ]; then mkdir -p "$PROJECT_DIR"; fi
+
+# rsync: -a (archive), --delete (remove files not present in source), --exclude (skip storage)
+rsync -a --delete --exclude='storage' "$TEMP_DIR/code/" "$PROJECT_DIR/"
+
+# Create storage if missing (first deploy)
+mkdir -p "$PROJECT_DIR/storage" "$PROJECT_DIR/bootstrap/cache"
+
+# 5. CÀI ĐẶT & MIGRATE
 cd $PROJECT_DIR
+# Temporarily take ownership to run Composer
+chown -R ec2-user:ec2-user . 
 
-# --- 2. RUN CODE COMMANDS (as ec2-user) ---
-
-echo "Pulling Code from branch $BRANCH..."
-# Discard local changes and pull the latest code
-sudo -u ec2-user git fetch --all
-sudo -u ec2-user git reset --hard origin/$BRANCH
-
-echo "Running Composer..."
+echo "Step 5: Running Composer..."
+# Install fresh vendors (S3 artifact contains only clean source)
 sudo -u ec2-user /usr/bin/composer install --no-dev --optimize-autoloader --no-interaction
 
-echo "Running Artisan Commands..."
-# Note: Artisan will use the .env file in the current directory
+echo "Step 6: Running Artisan..."
 sudo -u ec2-user php artisan migrate --force
 sudo -u ec2-user php artisan optimize:clear
 sudo -u ec2-user php artisan config:cache
 sudo -u ec2-user php artisan route:cache
 sudo -u ec2-user php artisan view:cache
 
-# --- 3. RUN SYSTEM COMMANDS (as root) ---
+# 6. FINAL PERMISSIONS (IMPORTANT)
+echo "Step 7: Finalizing Permissions..."
+# Give Apache ownership of writable directories
+chown -R apache:apache storage bootstrap/cache
+chmod -R 775 storage bootstrap/cache
 
-echo "Setting Final Permissions (Fix Log/Cache Error)..."
-# Set 777 on storage so both Nginx and Artisan can write
-chmod -R 777 $PROJECT_DIR/storage
-chmod -R 777 $PROJECT_DIR/bootstrap/cache
+# Give deploy log file ownership back to ec2-user
+chown ec2-user:ec2-user "$LOG_FILE"
 
-echo "Reloading Nginx..."
+# Cleanup
+rm -rf $TEMP_DIR
+
+# Reload Nginx
 systemctl reload nginx
 
-echo "Deploy Success to $ENV_TYPE!"
+echo "[DEPLOY SUCCESS] Version $TARGET_VERSION is now live!"

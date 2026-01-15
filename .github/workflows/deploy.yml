@@ -1,32 +1,44 @@
-name: CI/CD Pipeline
-# 1.3.5
+name: Deploy S3 Artifact
 on:
   push:
     tags:
       - "prod-*"
 
-permissions:
-  id-token: write 
-  contents: read
-
-concurrency: 
-  group: production-deployment
-  cancel-in-progress: false
-
 jobs:
-  deploy-prod:
+  build-and-deploy:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
     steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/GitHub-Deploy-Role
           aws-region: ap-northeast-1
 
-      - name: Deploy to PROD Server
+      - name: Create Zip Artifact
+        run: |
+          echo "Packing source code..."
+          # Zip all source code EXCEPT the .git directory (large) and other junk files
+          zip -r deploy_package.zip . -x "*.git*" "tests/*" "node_modules/*" ".github/*"
+
+      - name: Upload Artifact to S3
+        run: |
+          # Upload to the /builds folder in your bucket
+          # Filename will be: source-prod-v1.0.zip
+          aws s3 cp deploy_package.zip s3://my-exment-configs/builds/source-${{ github.ref_name }}.zip
+
+      
+      - name: Trigger EC2 Deploy
         run: |
           aws ssm send-command \
             --document-name "Exment-Deploy-Prod-Doc" \
             --targets "Key=instanceids,Values=${{ secrets.PROD_INSTANCE_ID }}" \
+            --parameters "version=${{ github.ref_name }}" \
             --cloud-watch-output-config '{"CloudWatchOutputEnabled":true, "CloudWatchLogGroupName":"/aws/ssm/Exment-Deploy-Logs"}' \
-            --comment "Trigger Safe Deploy via GitHub Actions"
+            --comment "Deploying Artifact ${{ github.ref_name }}"
