@@ -1,6 +1,5 @@
 #!/bin/bash
 
-# 1.4.0
 
 # --- CONFIG ---
 BUCKET_NAME="my-exment-configs"
